@@ -509,6 +509,7 @@ class ElasticPress_CLI_Command extends WP_CLI_Command {
 				'ignore_sticky_posts'    => true,
 				'orderby'                => 'ID',
 				'order'                  => 'DESC',
+				'fields'                 => 'ids',
 			) );
 
 			if ( $post_in ) {
@@ -519,22 +520,21 @@ class ElasticPress_CLI_Command extends WP_CLI_Command {
 
 			if ( $query->have_posts() ) {
 
-				while ( $query->have_posts() ) {
-					$query->the_post();
+				foreach ( $query->posts as $post_id ) {
 
 					if ( $no_bulk ) {
 						// index the posts one-by-one. not sure why someone may want to do this.
-						$result = ep_sync_post( get_the_ID() );
+						$result = ep_sync_post( $post_id );
 
 						$this->reset_transient();
 
-						do_action( 'ep_cli_post_index', get_the_ID() );
+						do_action( 'ep_cli_post_index', $post_id );
 					} else {
-						$result = $this->queue_post( get_the_ID(), $query->post_count, $show_bulk_errors );
+						$result = $this->queue_post( $post_id, $query->post_count, $show_bulk_errors );
 					}
 
 					if ( ! $result ) {
-						$errors[] = get_the_ID();
+						$errors[] = $post_id;
 					} elseif ( true === $result || isset( $result->_index ) ) {
 						$synced ++;
 					}
@@ -760,10 +760,18 @@ class ElasticPress_CLI_Command extends WP_CLI_Command {
 	 */
 	public function status() {
 		$this->_connect_check();
+		$index_names = array();
 
 		$request_args = array( 'headers' => ep_format_request_headers() );
 
-		$request = wp_remote_get( trailingslashit( ep_get_host( true ) ) . '_recovery/?pretty', $request_args );
+		$sites = ( is_multisite() ) ? ep_get_sites() : array( 'blog_id' => get_current_blog_id() );
+		foreach ( $sites as $site ) {
+			$index_names[] = ep_get_index_name( $site['blog_id'] );
+		}
+
+		$index_names_imploded = implode( $index_names, "," );
+
+		$request = wp_remote_get( trailingslashit( ep_get_host( true ) ) . $index_names_imploded . '/_recovery/?pretty', $request_args );
 
 		if ( is_wp_error( $request ) ) {
 			WP_CLI::error( implode( "\n", $request->get_error_messages() ) );
@@ -783,18 +791,24 @@ class ElasticPress_CLI_Command extends WP_CLI_Command {
 	 */
 	public function stats() {
 		$this->_connect_check();
+		$index_names = array();
 
 		$request_args = array( 'headers' => ep_format_request_headers() );
 
-		$request = wp_remote_get( trailingslashit( ep_get_host( true ) ) . '_stats/', $request_args );
+		$sites = ( is_multisite() ) ? ep_get_sites() : array( 'blog_id' => get_current_blog_id() );
+		foreach ( $sites as $site ) {
+			$index_names[] = ep_get_index_name( $site['blog_id'] );
+		}
+
+		$index_names_imploded = implode( $index_names, "," );
+
+		$request = wp_remote_get( trailingslashit( ep_get_host( true ) ) . $index_names_imploded . '/_stats/', $request_args );
 		if ( is_wp_error( $request ) ) {
 			WP_CLI::error( implode( "\n", $request->get_error_messages() ) );
 		}
 		$body  = json_decode( wp_remote_retrieve_body( $request ), true );
-		$sites = ( is_multisite() ) ? ep_get_sites() : array( 'blog_id' => get_current_blog_id() );
 
-		foreach ( $sites as $site ) {
-			$current_index = ep_get_index_name( $site['blog_id'] );
+		foreach ( $index_names as $current_index ) {
 
 			if (isset( $body['indices'][$current_index] ) ) {
 				WP_CLI::log( '====== Stats for: ' . $current_index . " ======" );

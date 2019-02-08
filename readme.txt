@@ -40,6 +40,39 @@ Please refer to [Github](https://github.com/10up/ElasticPress) for detailed usag
 
 == Changelog ==
 
+= 2.8.0 =
+
+ElasticPress 2.8 provides some new enhancements and bug fixes.
+
+* Sticky posts support.
+* Meta LIKE query adjustment.
+* Autosuggest bugfix.
+* Autosuggest to abide by plugin settings.
+* WooCommerce searches with custom fields.
+* Adjustment to `wp elasticpress status`
+* Add Elasticsearch version in settings. (Props [turtlepod](https://github.com/turtlepod))
+* Allow user to set number of posts during bulk indexing cycle.
+* Facet query string customization (Props [ray-lee](https://github.com/ray-lee))
+* Removal of logic that determines if blog is public / indexable. (Resolves sync issue.)
+* Fix for auto activating sync notices. (Props [petenelson](https://github.com/petenelson))
+* Removal of date weighting for protected content admin queries.
+* Protected content: filtering of filtered post types.
+* Implemented --post-ids CLI option to index only specific posts. (Props [dotancohen](https://github.com/dotancohen))
+
+
+= 2.7.0 (Requires re-index) =
+
+ElasticPress 2.7 provides some new enhancements and bug fixes.
+
+* Prevent indexing when blog is deleted or not public.
+* Do not apply absint to comment_status.
+* ElasticPress.io credentials bugfix.
+* Related posts bugfix.
+* Random WooCommerce ordering allowed.
+* Query only post IDs when indexing. (Props [elliott-stocks](https://github.com/elliott-stocks))
+* Better error notices. (Props [petenelson](https://github.com/petenelson))
+
+
 = 2.6.1 =
 
 * Resolves issue of missing file for wp-cli.

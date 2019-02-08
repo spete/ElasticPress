@@ -583,14 +583,14 @@ class EP_API {
 			);
 		}
 
-		$post_date = $post->post_date;
-		$post_date_gmt = $post->post_date_gmt;
-		$post_modified = $post->post_modified;
+		$post_date         = $post->post_date;
+		$post_date_gmt     = $post->post_date_gmt;
+		$post_modified     = $post->post_modified;
 		$post_modified_gmt = $post->post_modified_gmt;
-		$comment_count = absint( $post->comment_count );
-		$comment_status = absint( $post->comment_status );
-		$ping_status = absint( $post->ping_status );
-		$menu_order = absint( $post->menu_order );
+		$comment_count     = absint( $post->comment_count );
+		$comment_status    = $post->comment_status;
+		$ping_status       = $post->ping_status;
+		$menu_order        = absint( $post->menu_order );
 
 		if ( apply_filters( 'ep_ignore_invalid_dates', true, $post_id, $post ) ) {
 			if ( ! strtotime( $post_date ) || $post_date === "0000-00-00 00:00:00" ) {
@@ -1531,6 +1531,30 @@ class EP_API {
 		}
 
 		/**
+		 * Sticky posts support
+		 */
+		// Check first if there's sticky posts and show them only in the front page
+		$sticky_posts = get_option( 'sticky_posts' );
+		if( false !== $sticky_posts
+			&& is_home()
+			&& in_array( $args['ignore_sticky_posts'], array( 'false', 0 ) ) ) {
+			//let's eliminate sort so it does not mess with function_score results
+			$formatted_args['sort'] = array();
+			$formatted_args_query = $formatted_args['query'];
+			$formatted_args['query'] = array();
+			$formatted_args['query']['function_score']['query'] = $formatted_args_query;
+			$formatted_args['query']['function_score']['functions'] = array(
+			//add extra weight to sticky posts to show them on top
+				(object) array(
+					'filter' => array(
+						'terms' => array( '_id' => $sticky_posts )
+					),
+					'weight' => 2
+				)
+			);
+		}
+
+		/**
 		 * If not set default to post. If search and not set, default to "any".
 		 */
 		if ( ! empty( $args['post_type'] ) ) {
@@ -1928,10 +1952,8 @@ class EP_API {
 						case 'like':
 							if ( isset( $single_meta_query['value'] ) ) {
 								$terms_obj = array(
-									'query' => array(
-										'match' => array(
-											$meta_key_path => $single_meta_query['value'],
-										)
+									'match_phrase' => array(
+										$meta_key_path => $single_meta_query['value'],
 									),
 								);
 							}
@@ -2011,6 +2033,7 @@ class EP_API {
 			$sites = array();
 
 			foreach ( $site_objects as $site ) {
+
 				$sites[] = array(
 					'blog_id' => $site->blog_id,
 					'domain'  => $site->domain,
